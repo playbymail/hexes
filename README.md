@@ -17,3 +17,6 @@ Cube coordinates use q, r, s.
 Axial coordinates use q and r.
 S can be calculated as s = -q - r.
 
+# Points
+
+Points are x, y coordinates.
