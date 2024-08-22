@@ -135,6 +135,9 @@ type Layout interface {
 
 	HexToCenterPoint(h Hex) Point
 	Points(h Hex) (Point, [6]Point)
+
+	HexToOffset(h Hex) (column, row int)
+	OffsetToHex(column, row int) Hex
 }
 
 type FlatEvenLayout struct {
@@ -154,7 +157,7 @@ type PointyEvenLayout struct {
 	origin Point
 }
 
-func NewPointyOddLayout(size, origin Point) Layout {
+func NewPointyEvenLayout(size, origin Point) Layout {
 	return &PointyEvenLayout{
 		size:   size,
 		origin: origin,
@@ -171,10 +174,6 @@ func (p Point) String() string {
 
 func NewPoint(x, y float64) Point {
 	return Point{X: x, Y: y}
-}
-
-type OffsetCoord struct {
-	Column, Row int
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -345,4 +344,100 @@ func hex_linedraw_with_nudge(a, b Hex) (results []Hex) {
 	}
 
 	return results
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// rotation
+
+func hex_rotate_left(a Hex) Hex {
+	return Hex{q: -a.s, r: -a.q, s: -a.r}
+}
+
+func hex_rotate_right(a Hex) Hex {
+	return Hex{q: -a.r, r: -a.s, s: -a.q}
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// offset coordinates
+//
+// There are four types of offset coordinate systems:
+//   odd-r    pointy top hexes   push odd rows right
+//   even-r   pointy top hexes   push even rows right
+//   odd-q    flat top hexes     push odd columns down
+//   even-q   flat top hexes     push even columns down
+
+// cube_to_evenq converts cube coordinates to even-q offset coordinates.
+func cube_to_evenq(h Hex) (column, row int) {
+	column = h.q
+	row = h.r + int((h.q+1*(h.q&1))/2)
+	return column, row
+}
+
+// cube_to_oddq converts cube coordinates to odd-q offset coordinates.
+func cube_to_oddq(h Hex) (column, row int) {
+	column = h.q
+	row = h.r + int((h.q-1*(h.q&1))/2)
+	return column, row
+}
+
+// evenq_to_cube converts even-q offset coordinates to cube coordinates.
+func evenq_to_cube(column, row int) Hex {
+	q := column
+	r := row - int((column+1*(column&1))/2)
+	s := -q - r
+	return Hex{q: q, r: r, s: s}
+}
+
+// oddq_to_cube converts odd-q offset coordinates to cube coordinates.
+func oddq_to_cube(column, row int) Hex {
+	q := column
+	r := row - int((column-1*(column&1))/2)
+	s := -q - r
+	return Hex{q: q, r: r, s: s}
+}
+
+// cube_to_evenr converts cube coordinates to even-r offset coordinates.
+func cube_to_evenr(h Hex) (column, row int) {
+	column = h.q + int((h.r+1*(h.r&1))/2)
+	row = h.r
+	return column, row
+}
+
+// cube_to_oddr converts cube coordinates to odd-r offset coordinates.
+func cube_to_oddr(h Hex) (column, row int) {
+	column = h.q + int((h.r-1*(h.r&1))/2)
+	row = h.r
+	return column, row
+}
+
+// evenr_to_cube converts even-r offset coordinates to cube coordinates.
+func evenr_to_cube(column, row int) Hex {
+	q := column - int((row+1*(row&1))/2)
+	r := row
+	s := -q - r
+	return Hex{q: q, r: r, s: s}
+}
+
+// oddr_to_cube converts odd-r offset coordinates to cube coordinates.
+func oddr_to_cube(column, row int) Hex {
+	q := column - int((row-1*(row&1))/2)
+	r := row
+	s := -q - r
+	return Hex{q: q, r: r, s: s}
+}
+
+func (layout *FlatEvenLayout) HexToOffset(h Hex) (column, row int) {
+	return cube_to_evenq(h)
+}
+
+func (layout *FlatEvenLayout) OffsetToHex(column, row int) Hex {
+	return evenq_to_cube(column, row)
+}
+
+func (layout *PointyEvenLayout) HexToOffset(h Hex) (column, row int) {
+	return cube_to_evenr(h)
+}
+
+func (layout *PointyEvenLayout) OffsetToHex(column, row int) Hex {
+	return evenr_to_cube(column, row)
 }

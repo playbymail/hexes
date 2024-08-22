@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/fogleman/gg"
 	"github.com/playbymail/hexes"
 	"log"
@@ -11,13 +12,27 @@ import (
 func main() {
 	cx, cy := 512.0, 512.0
 
-	hv := newHexMap(5)
-
-	if err := drawHexes("flat-even.png", hv, hexes.NewFlatEvenLayout(hexes.NewPoint(50, 50), hexes.NewPoint(cx, cy))); err != nil {
+	layout := hexes.NewFlatEvenLayout(hexes.NewPoint(50, 50), hexes.NewPoint(cx, cy))
+	err := drawHexes("flat-even.png", newHexMap(5), layout)
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := drawHexes("pointy-odd.png", hv, hexes.NewPointyOddLayout(hexes.NewPoint(50, 50), hexes.NewPoint(cx, cy))); err != nil {
+	layout = hexes.NewPointyEvenLayout(hexes.NewPoint(50, 50), hexes.NewPoint(cx, cy))
+	err = drawHexes("pointy-even.png", newHexMap(5), layout)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	layout = hexes.NewFlatEvenLayout(hexes.NewPoint(50, 50), hexes.NewPoint(100, 100))
+	err = drawHexes("flat-even-square.png", newSquareMap(layout, 5), layout)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	layout = hexes.NewPointyEvenLayout(hexes.NewPoint(50, 50), hexes.NewPoint(100, 100))
+	err = drawHexes("pointy-even-square.png", newSquareMap(layout, 5), layout)
+	if err != nil {
 		log.Fatal(err)
 	}
 }
@@ -27,6 +42,15 @@ func newHexMap(n int) (h []hexes.Hex) {
 		r1, r2 := max(-n, -q-n), min(n, -q+n)
 		for r := r1; r <= r2; r++ {
 			h = append(h, hexes.NewHex(q, r, -q-r))
+		}
+	}
+	return h
+}
+
+func newSquareMap(l hexes.Layout, n int) (h []hexes.Hex) {
+	for column := 0; column <= n; column++ {
+		for row := 0; row <= n; row++ {
+			h = append(h, l.OffsetToHex(column, row))
 		}
 	}
 	return h
@@ -42,6 +66,9 @@ func drawHexes(path string, hv []hexes.Hex, l hexes.Layout) error {
 		dc.DrawCircle(cp.X, cp.Y, 3)
 		dc.SetRGB(0, 0, 0)
 		dc.Fill()
+
+		column, row := l.HexToOffset(h)
+		dc.DrawStringAnchored(fmt.Sprintf("%d, %d", column, row), cp.X, cp.Y, 0.5, 0.5)
 
 		pt := corners[5]
 		x1, y1 := pt.X, pt.Y
