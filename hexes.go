@@ -152,6 +152,18 @@ func NewFlatEvenLayout(size, origin Point) Layout {
 	}
 }
 
+type FlatOddLayout struct {
+	size   Point
+	origin Point
+}
+
+func NewFlatOddLayout(size, origin Point) Layout {
+	return &FlatOddLayout{
+		size:   size,
+		origin: origin,
+	}
+}
+
 type PointyEvenLayout struct {
 	size   Point
 	origin Point
@@ -192,6 +204,19 @@ func (layout *FlatEvenLayout) HexToCenterPoint(h Hex) Point {
 	return layout.hex_to_pixel(h)
 }
 
+func (layout *FlatOddLayout) hex_to_pixel(h Hex) Point {
+	var x = (layout_flat.f0*float64(h.q) + layout_flat.f1*float64(h.r)) * layout.size.X
+	var y = (layout_flat.f2*float64(h.q) + layout_flat.f3*float64(h.r)) * layout.size.Y
+	return Point{
+		X: x + layout.origin.X,
+		Y: y + layout.origin.Y,
+	}
+}
+
+func (layout *FlatOddLayout) HexToCenterPoint(h Hex) Point {
+	return layout.hex_to_pixel(h)
+}
+
 func (layout *PointyEvenLayout) hex_to_pixel(h Hex) Point {
 	var x = (layout_pointy.f0*float64(h.q) + layout_pointy.f1*float64(h.r)) * layout.size.X
 	var y = (layout_pointy.f2*float64(h.q) + layout_pointy.f3*float64(h.r)) * layout.size.Y
@@ -216,6 +241,14 @@ func (layout *FlatEvenLayout) pixel_to_hex(p Point) FractionalHex {
 	return FractionalHex{q: q, r: r, s: -q - r}
 }
 
+func (layout *FlatOddLayout) pixel_to_hex(p Point) FractionalHex {
+	var M = layout_flat
+	var pt = Point{X: (p.X - layout.origin.X) / layout.size.X, Y: (p.X - layout.origin.Y) / layout.size.Y}
+	var q = M.b0*pt.X + M.b1*pt.Y
+	var r = M.b2*pt.X + M.b3*pt.Y
+	return FractionalHex{q: q, r: r, s: -q - r}
+}
+
 func (layout *PointyEvenLayout) pixel_to_hex(p Point) FractionalHex {
 	var M = layout_pointy
 	var pt = Point{X: (p.X - layout.origin.X) / layout.size.X, Y: (p.Y - layout.origin.Y) / layout.size.Y}
@@ -228,6 +261,12 @@ func (layout *PointyEvenLayout) pixel_to_hex(p Point) FractionalHex {
 // drawing hex on screen
 
 func (layout *FlatEvenLayout) hex_corner_offset(corner int) Point {
+	size := layout.size
+	angle := 2.0 * math.Pi * (layout_flat.start_angle + float64(corner)) / 6
+	return Point{X: size.X * math.Cos(angle), Y: size.Y * math.Sin(angle)}
+}
+
+func (layout *FlatOddLayout) hex_corner_offset(corner int) Point {
 	size := layout.size
 	angle := 2.0 * math.Pi * (layout_flat.start_angle + float64(corner)) / 6
 	return Point{X: size.X * math.Cos(angle), Y: size.Y * math.Sin(angle)}
@@ -249,6 +288,16 @@ func (layout *FlatEvenLayout) polygon_corners(h Hex) [6]Point {
 	return corners
 }
 
+func (layout *FlatOddLayout) polygon_corners(h Hex) [6]Point {
+	var corners [6]Point
+	center := layout.HexToCenterPoint(h)
+	for i := 0; i < 6; i++ {
+		offset := layout.hex_corner_offset(i)
+		corners[i] = Point{X: center.X + offset.X, Y: center.Y + offset.Y}
+	}
+	return corners
+}
+
 func (layout *PointyEvenLayout) polygon_corners(h Hex) [6]Point {
 	var corners [6]Point
 	center := layout.hex_to_pixel(h)
@@ -260,6 +309,15 @@ func (layout *PointyEvenLayout) polygon_corners(h Hex) [6]Point {
 }
 
 func (layout *FlatEvenLayout) Points(h Hex) (center Point, corners [6]Point) {
+	center = layout.hex_to_pixel(h)
+	for i := 0; i < 6; i++ {
+		offset := layout.hex_corner_offset(i)
+		corners[i] = Point{X: center.X + offset.X, Y: center.Y + offset.Y}
+	}
+	return center, corners
+}
+
+func (layout *FlatOddLayout) Points(h Hex) (center Point, corners [6]Point) {
 	center = layout.hex_to_pixel(h)
 	for i := 0; i < 6; i++ {
 		offset := layout.hex_corner_offset(i)
@@ -432,6 +490,14 @@ func (layout *FlatEvenLayout) HexToOffset(h Hex) (column, row int) {
 
 func (layout *FlatEvenLayout) OffsetToHex(column, row int) Hex {
 	return evenq_to_cube(column, row)
+}
+
+func (layout *FlatOddLayout) HexToOffset(h Hex) (column, row int) {
+	return cube_to_oddq(h)
+}
+
+func (layout *FlatOddLayout) OffsetToHex(column, row int) Hex {
+	return oddq_to_cube(column, row)
 }
 
 func (layout *PointyEvenLayout) HexToOffset(h Hex) (column, row int) {
